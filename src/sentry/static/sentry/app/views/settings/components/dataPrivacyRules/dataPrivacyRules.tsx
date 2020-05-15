@@ -9,6 +9,7 @@ import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
 import ExternalLink from 'app/components/links/externalLink';
 import SentryTypes from 'app/sentryTypes';
 import Button from 'app/components/button';
+import {IconAdd} from 'app/icons';
 
 import {defaultSuggestions as sourceDefaultSuggestions} from './dataPrivacyRulesForm/dataPrivacyRulesFormSourceSuggestions';
 import DataPrivacyRulesModal from './dataPrivacyRulesModal';
@@ -42,10 +43,10 @@ type PiiConfigRule = {
 type Applications = {[key: string]: Array<string>};
 
 type Props = {
-  disabled?: boolean;
   endpoint: string;
   relayPiiConfig?: string;
   additionalContext?: React.ReactNode;
+  disabled?: boolean;
 };
 
 type State = {
@@ -360,8 +361,9 @@ class DataPrivacyRules extends React.Component<Props, State> {
   };
 
   render() {
-    const {additionalContext, disabled} = this.props;
+    const {additionalContext, disabled, endpoint} = this.props;
     const {rules, sourceSuggestions, showAddRuleModal, eventId} = this.state;
+    const isProjectLevel = endpoint.includes('projects');
 
     return (
       <React.Fragment>
@@ -380,6 +382,14 @@ class DataPrivacyRules extends React.Component<Props, State> {
               ),
             })}
           </PanelAlert>
+          {isProjectLevel && (
+            <OrganizationRules>
+              <OrganizationRulesDescription>
+                <div>{t('Organization Level Rules')}</div>
+                <Button icon={<IconAdd size="xs" />} size="xsmall" />
+              </OrganizationRulesDescription>
+            </OrganizationRules>
+          )}
           <PanelBody>
             <DataPrivacyRulesPanelContent
               rules={rules}
@@ -432,4 +442,18 @@ const PanelAction = styled('div')`
   grid-template-columns: auto auto;
   justify-content: flex-end;
   border-top: 1px solid ${p => p.theme.borderDark};
+`;
+
+const OrganizationRules = styled('div')``;
+
+const OrganizationRulesDescription = styled('div')`
+  padding: ${space(1)} ${space(2)};
+  display: grid;
+  grid-template-columns: auto 1fr;
+  justify-items: flex-end;
+  border-bottom: 1px solid ${p => p.theme.borderDark};
+  align-items: center;
+  color: ${p => p.theme.gray2};
+  background: ${p => p.theme.offWhite};
+  font-size: ${p => p.theme.fontSizeMedium};
 `;
