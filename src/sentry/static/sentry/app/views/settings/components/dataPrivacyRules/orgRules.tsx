@@ -24,18 +24,20 @@ class OrgRules extends React.Component<Props, State> {
     isCollapsed: true,
   };
 
-  componentDidMount() {
+  componentDidUpdate() {
     this.loadContentHeight();
   }
 
   rulesListRef = React.createRef<HTMLUListElement>();
 
   loadContentHeight = () => {
-    const contentHeight = this.rulesListRef.current?.offsetHeight;
-    if (contentHeight) {
-      this.setState({
-        contentHeight: `${contentHeight}px`,
-      });
+    if (!this.state.contentHeight) {
+      const contentHeight = this.rulesListRef.current?.offsetHeight;
+      if (contentHeight) {
+        this.setState({
+          contentHeight: `${contentHeight}px`,
+        });
+      }
     }
   };
 
@@ -49,12 +51,17 @@ class OrgRules extends React.Component<Props, State> {
     const {rules} = this.props;
     const {isCollapsed, contentHeight} = this.state;
 
+    if (rules.length === 0) {
+      return (
+        <Wrapper>{t('There is no data privacy rules in the organization level')}</Wrapper>
+      );
+    }
     return (
       <ClassNames>
         {({css: classNamesCss}) => (
           <Wrapper isCollapsed={isCollapsed} contentHeight={contentHeight}>
             <Header>
-              <div>{t('Organization Level Rules')}</div>
+              <div>{t('Organization Rules')}</div>
               <Button
                 icon={<IconChevron size="xs" direction={isCollapsed ? 'down' : 'up'} />}
                 size="xsmall"
@@ -76,28 +83,29 @@ class OrgRules extends React.Component<Props, State> {
 
 export default OrgRules;
 
-const Header = styled('div')`
-  padding: ${space(1)} ${space(2)};
-  display: grid;
-  grid-template-columns: auto 1fr;
-  justify-items: flex-end;
-  border-bottom: 1px solid ${p => p.theme.borderDark};
-  align-items: center;
-  color: ${p => p.theme.gray2};
-  background: ${p => p.theme.offWhite};
-  font-size: ${p => p.theme.fontSizeMedium};
-`;
-
 const Content = styled('div')`
   transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
   height: 0;
   overflow: hidden;
 `;
 
-const Wrapper = styled('div')<{isCollapsed: boolean; contentHeight?: string}>`
+const Header = styled('div')`
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border-bottom: 1px solid ${p => p.theme.borderDark};
+  padding: ${space(1)} ${space(2)};
+`;
+
+const Wrapper = styled('div')<{isCollapsed?: boolean; contentHeight?: string}>`
   font-size: ${p => p.theme.fontSizeMedium};
   color: ${p => p.theme.gray1};
   background: ${p => p.theme.offWhite};
+  ${p =>
+    !p.contentHeight &&
+    css`
+      padding: ${space(1)} ${space(2)};
+    `};
   ${p =>
     !p.isCollapsed &&
     css`

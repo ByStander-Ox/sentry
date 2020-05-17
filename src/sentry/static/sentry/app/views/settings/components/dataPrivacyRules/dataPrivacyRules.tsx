@@ -58,6 +58,7 @@ type State = {
   eventId: ModalProps['eventId'];
   orgRules: Array<Rule>;
   showAddRuleModal?: boolean;
+  isProjectLevel?: boolean;
 };
 
 class DataPrivacyRules extends React.Component<Props, State> {
@@ -65,6 +66,7 @@ class DataPrivacyRules extends React.Component<Props, State> {
     rules: [],
     savedRules: [],
     relayPiiConfig: this.props.relayPiiConfig,
+    isProjectLevel: this.props.endpoint.includes('projects'),
     sourceSuggestions: [],
     eventId: {
       value: '',
@@ -91,9 +93,8 @@ class DataPrivacyRules extends React.Component<Props, State> {
   api = new Client();
 
   loadOrganizationRules = async () => {
-    const {orgSlug, endpoint} = this.props;
-
-    const isProjectLevel = endpoint.includes('projects');
+    const {orgSlug} = this.props;
+    const {isProjectLevel} = this.state;
 
     if (isProjectLevel) {
       try {
@@ -383,7 +384,14 @@ class DataPrivacyRules extends React.Component<Props, State> {
 
   render() {
     const {additionalContext, disabled} = this.props;
-    const {rules, sourceSuggestions, showAddRuleModal, eventId, orgRules} = this.state;
+    const {
+      rules,
+      sourceSuggestions,
+      showAddRuleModal,
+      eventId,
+      orgRules,
+      isProjectLevel,
+    } = this.state;
 
     return (
       <React.Fragment>
@@ -403,7 +411,7 @@ class DataPrivacyRules extends React.Component<Props, State> {
             })}
           </PanelAlert>
           <PanelBody>
-            {orgRules.length > 0 && <OrgRules rules={orgRules} />}
+            {isProjectLevel && <OrgRules rules={orgRules} />}
             <DataPrivacyRulesPanelContent
               rules={rules}
               onDeleteRule={this.handleDeleteRule}
