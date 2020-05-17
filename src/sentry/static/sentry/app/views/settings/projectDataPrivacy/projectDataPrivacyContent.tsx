@@ -82,6 +82,8 @@ class ProjectDataPrivacyContent extends AsyncView<Props> {
           endpoint={endpoint}
           relayPiiConfig={relayPiiConfig}
           disabled={!access.has('project:write')}
+          orgSlug={organization.slug}
+          projectId={project.id}
         />
       </React.Fragment>
     );

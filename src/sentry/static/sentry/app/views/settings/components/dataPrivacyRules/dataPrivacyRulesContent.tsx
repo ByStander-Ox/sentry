@@ -5,7 +5,7 @@ import {defined} from 'app/utils';
 import EmptyMessage from 'app/views/settings/components/emptyMessage';
 import {IconWarning} from 'app/icons';
 
-import DataPrivacyRulesList from './dataPrivacyRulesList';
+import RulesList from './rulesList';
 import DataPrivacyRulesModal from './dataPrivacyRulesModal';
 
 type ModalProps = React.ComponentProps<typeof DataPrivacyRulesModal>;
@@ -15,7 +15,7 @@ type Props = {
   rules: Array<Rule>;
   onUpdateRule: ModalProps['onSaveRule'];
   onDeleteRule: (rulesToBeDeleted: Array<Rule['id']>) => void;
-} & Pick<ModalProps, 'disabled' | 'eventId' | 'onUpdateEventId' | 'sourceSuggestions'>;
+} & Pick<ModalProps, 'eventId' | 'onUpdateEventId' | 'sourceSuggestions'>;
 
 type State = {
   editRule?: Rule['id'];
@@ -72,7 +72,7 @@ class DataPrivacyRulesContent extends React.Component<Props, State> {
 
     return (
       <React.Fragment>
-        <DataPrivacyRulesList
+        <RulesList
           rules={rules}
           onDeleteRule={this.handleDeleteRule}
           onShowEditRuleModal={this.handleShowEditRuleModal}

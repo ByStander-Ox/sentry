@@ -69,6 +69,7 @@ class OrganizationSecurityAndPrivacyContent extends AsyncView<Props> {
           endpoint={endpoint}
           relayPiiConfig={relayPiiConfig}
           disabled={!access.has('org:write')}
+          orgSlug={organization.slug}
         />
       </React.Fragment>
     );

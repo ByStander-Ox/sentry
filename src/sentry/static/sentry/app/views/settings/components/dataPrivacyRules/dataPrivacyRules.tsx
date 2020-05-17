@@ -7,15 +7,15 @@ import {Panel, PanelAlert, PanelBody, PanelHeader} from 'app/components/panels';
 import {Client} from 'app/api';
 import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
 import ExternalLink from 'app/components/links/externalLink';
-import SentryTypes from 'app/sentryTypes';
 import Button from 'app/components/button';
-import {IconAdd} from 'app/icons';
+import {Organization, Project} from 'app/types';
 
 import {defaultSuggestions as sourceDefaultSuggestions} from './dataPrivacyRulesForm/dataPrivacyRulesFormSourceSuggestions';
 import DataPrivacyRulesModal from './dataPrivacyRulesModal';
 import DataPrivacyRulesPanelContent from './dataPrivacyRulesContent';
-import {RuleType, MethodType, EventIdStatus} from './dataPrivacyRulesForm/types';
 import DataPrivacyRulesPanelForm from './dataPrivacyRulesForm/dataPrivacyRulesForm';
+import OrgRules from './orgRules';
+import {Rule, RuleType, MethodType, EventIdStatus} from './types';
 
 const ADVANCED_DATASCRUBBING_LINK =
   'https://docs.sentry.io/data-management/advanced-datascrubbing/';
@@ -24,7 +24,6 @@ type DataPrivacyRulesPanelFormProps = React.ComponentProps<
   typeof DataPrivacyRulesPanelForm
 >;
 type ModalProps = React.ComponentProps<typeof DataPrivacyRulesModal>;
-type Rule = NonNullable<ModalProps['rule']>;
 type SourceSuggestions = ModalProps['sourceSuggestions'];
 type Errors = DataPrivacyRulesPanelFormProps['errors'];
 
@@ -44,6 +43,8 @@ type Applications = {[key: string]: Array<string>};
 
 type Props = {
   endpoint: string;
+  orgSlug: Organization['slug'];
+  projectId?: Project['id'];
   relayPiiConfig?: string;
   additionalContext?: React.ReactNode;
   disabled?: boolean;
@@ -55,15 +56,11 @@ type State = {
   relayPiiConfig?: string;
   sourceSuggestions: SourceSuggestions;
   eventId: ModalProps['eventId'];
+  orgRules: Array<Rule>;
   showAddRuleModal?: boolean;
 };
 
 class DataPrivacyRules extends React.Component<Props, State> {
-  static contextTypes = {
-    organization: SentryTypes.Organization,
-    project: SentryTypes.Project,
-  };
-
   state: State = {
     rules: [],
     savedRules: [],
@@ -72,11 +69,13 @@ class DataPrivacyRules extends React.Component<Props, State> {
     eventId: {
       value: '',
     },
+    orgRules: [],
   };
 
   componentDidMount() {
     this.loadRules();
     this.loadSourceSuggestions();
+    this.loadOrganizationRules();
   }
 
   componentDidUpdate(_prevProps: Props, prevState: State) {
@@ -91,44 +90,27 @@ class DataPrivacyRules extends React.Component<Props, State> {
 
   api = new Client();
 
+  loadOrganizationRules = async () => {
+    const {orgSlug, endpoint} = this.props;
+
+    const isProjectLevel = endpoint.includes('projects');
+
+    if (isProjectLevel) {
+      try {
+        const rawOrg = await this.api.requestPromise(`/organizations/${orgSlug}/`);
+        const convertedRules = this.convertRelayPiiConfig(rawOrg?.relayPiiConfig);
+        this.setState({
+          orgRules: convertedRules,
+        });
+      } catch {
+        addErrorMessage(t('Unable to load organization rules'));
+      }
+    }
+  };
+
   loadRules() {
     try {
-      const relayPiiConfig = this.state.relayPiiConfig;
-      const piiConfig = relayPiiConfig ? JSON.parse(relayPiiConfig) : {};
-      const rules: PiiConfigRule = piiConfig.rules || {};
-      const applications: Applications = piiConfig.applications || {};
-      const convertedRules: Array<Rule> = [];
-
-      for (const application in applications) {
-        for (const rule of applications[application]) {
-          if (!rules[rule]) {
-            if (rule[0] === '@') {
-              const [type, method] = rule.slice(1).split(':');
-              convertedRules.push({
-                id: convertedRules.length,
-                type: type as RuleType,
-                method: method as MethodType,
-                source: application,
-              });
-            }
-            continue;
-          }
-
-          const resolvedRule = rules[rule];
-          if (resolvedRule.type === RuleType.PATTERN && resolvedRule.pattern) {
-            const method = resolvedRule?.redaction?.method;
-
-            convertedRules.push({
-              id: convertedRules.length,
-              type: RuleType.PATTERN,
-              method: method as MethodType,
-              source: application,
-              customRegularExpression: resolvedRule.pattern,
-            });
-          }
-        }
-      }
-
+      const convertedRules = this.convertRelayPiiConfig(this.state.relayPiiConfig);
       this.setState({
         rules: convertedRules,
         savedRules: convertedRules,
@@ -138,8 +120,47 @@ class DataPrivacyRules extends React.Component<Props, State> {
     }
   }
 
+  convertRelayPiiConfig = (relayPiiConfig?: string) => {
+    const piiConfig = relayPiiConfig ? JSON.parse(relayPiiConfig) : {};
+    const rules: PiiConfigRule = piiConfig.rules || {};
+    const applications: Applications = piiConfig.applications || {};
+    const convertedRules: Array<Rule> = [];
+
+    for (const application in applications) {
+      for (const rule of applications[application]) {
+        if (!rules[rule]) {
+          if (rule[0] === '@') {
+            const [type, method] = rule.slice(1).split(':');
+            convertedRules.push({
+              id: convertedRules.length,
+              type: type as RuleType,
+              method: method as MethodType,
+              source: application,
+            });
+          }
+          continue;
+        }
+
+        const resolvedRule = rules[rule];
+        if (resolvedRule.type === RuleType.PATTERN && resolvedRule.pattern) {
+          const method = resolvedRule?.redaction?.method;
+
+          convertedRules.push({
+            id: convertedRules.length,
+            type: RuleType.PATTERN,
+            method: method as MethodType,
+            source: application,
+            customRegularExpression: resolvedRule.pattern,
+          });
+        }
+      }
+    }
+
+    return convertedRules;
+  };
+
   loadSourceSuggestions = async () => {
-    const {organization, project} = this.context;
+    const {orgSlug, projectId} = this.props;
     const {eventId} = this.state;
 
     if (!eventId.value) {
@@ -163,12 +184,12 @@ class DataPrivacyRules extends React.Component<Props, State> {
 
     try {
       const query: {projectId?: string; eventId: string} = {eventId: eventId.value};
-      if (project?.id) {
-        query.projectId = project.id;
+      if (projectId) {
+        query.projectId = projectId;
       }
       const rawSuggestions = await this.api.requestPromise(
-        `/organizations/${organization.slug}/data-scrubbing-selector-suggestions/`,
-        {method: 'GET', query}
+        `/organizations/${orgSlug}/data-scrubbing-selector-suggestions/`,
+        {query}
       );
       const sourceSuggestions: SourceSuggestions = rawSuggestions.suggestions;
 
@@ -361,9 +382,8 @@ class DataPrivacyRules extends React.Component<Props, State> {
   };
 
   render() {
-    const {additionalContext, disabled, endpoint} = this.props;
-    const {rules, sourceSuggestions, showAddRuleModal, eventId} = this.state;
-    const isProjectLevel = endpoint.includes('projects');
+    const {additionalContext, disabled} = this.props;
+    const {rules, sourceSuggestions, showAddRuleModal, eventId, orgRules} = this.state;
 
     return (
       <React.Fragment>
@@ -382,18 +402,10 @@ class DataPrivacyRules extends React.Component<Props, State> {
               ),
             })}
           </PanelAlert>
-          {isProjectLevel && (
-            <OrganizationRules>
-              <OrganizationRulesDescription>
-                <div>{t('Organization Level Rules')}</div>
-                <Button icon={<IconAdd size="xs" />} size="xsmall" />
-              </OrganizationRulesDescription>
-            </OrganizationRules>
-          )}
           <PanelBody>
+            {orgRules.length > 0 && <OrgRules rules={orgRules} />}
             <DataPrivacyRulesPanelContent
               rules={rules}
-              disabled={disabled}
               onDeleteRule={this.handleDeleteRule}
               onUpdateRule={this.handleUpdateRule}
               onUpdateEventId={this.handleUpdateEventId}
@@ -442,18 +454,4 @@ const PanelAction = styled('div')`
   grid-template-columns: auto auto;
   justify-content: flex-end;
   border-top: 1px solid ${p => p.theme.borderDark};
-`;
-
-const OrganizationRules = styled('div')``;
-
-const OrganizationRulesDescription = styled('div')`
-  padding: ${space(1)} ${space(2)};
-  display: grid;
-  grid-template-columns: auto 1fr;
-  justify-items: flex-end;
-  border-bottom: 1px solid ${p => p.theme.borderDark};
-  align-items: center;
-  color: ${p => p.theme.gray2};
-  background: ${p => p.theme.offWhite};
-  font-size: ${p => p.theme.fontSizeMedium};
 `;

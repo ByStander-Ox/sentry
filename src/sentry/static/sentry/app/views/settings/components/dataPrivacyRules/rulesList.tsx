@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from '@emotion/styled';
+import PropTypes from 'prop-types';
 
 import {t} from 'app/locale';
 import space from 'app/styles/space';
@@ -17,29 +18,44 @@ type Props = {
   onDeleteRule?: (id: Rule['id']) => () => void;
 };
 
-const DataPrivacyRulesList = ({rules, onShowEditRuleModal, onDeleteRule}: Props) => (
-  <List>
-    {rules.map(({id, method, type, source}) => {
-      const methodLabel = getMethodTypeLabel(method);
-      const typelabel = getRuleTypeLabel(type);
-      return (
-        <ListItem key={id}>
-          <TextOverflow>
-            {`[${methodLabel}] [${typelabel}] ${t('from')} [${source}]`}
-          </TextOverflow>
-          {onShowEditRuleModal && (
-            <Button size="small" onClick={onShowEditRuleModal(id)} icon={<IconEdit />} />
-          )}
-          {onDeleteRule && (
-            <Button size="small" onClick={onDeleteRule(id)} icon={<IconDelete />} />
-          )}
-        </ListItem>
-      );
-    })}
-  </List>
-);
+const RulesList = React.forwardRef<HTMLUListElement, Props>(function RulesList(
+  {rules, onShowEditRuleModal, onDeleteRule},
+  ref
+) {
+  return (
+    <List ref={ref}>
+      {rules.map(({id, method, type, source}) => {
+        const methodLabel = getMethodTypeLabel(method);
+        const typelabel = getRuleTypeLabel(type);
+        return (
+          <ListItem key={id}>
+            <TextOverflow>
+              {`[${methodLabel}] [${typelabel}] ${t('from')} [${source}]`}
+            </TextOverflow>
+            {onShowEditRuleModal && (
+              <Button
+                size="small"
+                onClick={onShowEditRuleModal(id)}
+                icon={<IconEdit />}
+              />
+            )}
+            {onDeleteRule && (
+              <Button size="small" onClick={onDeleteRule(id)} icon={<IconDelete />} />
+            )}
+          </ListItem>
+        );
+      })}
+    </List>
+  );
+});
 
-export default DataPrivacyRulesList;
+RulesList.propTypes = {
+  rules: PropTypes.array.isRequired,
+  onShowEditRuleModal: PropTypes.func,
+  onDeleteRule: PropTypes.func,
+};
+
+export default RulesList;
 
 const List = styled('ul')`
   list-style: none;
