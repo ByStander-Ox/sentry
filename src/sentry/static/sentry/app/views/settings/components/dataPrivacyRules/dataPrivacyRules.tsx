@@ -43,7 +43,8 @@ type Applications = {[key: string]: Array<string>};
 
 type Props = {
   endpoint: string;
-  orgSlug: Organization['slug'];
+  organization: Organization;
+  onSubmitSuccess: (resp: Organization | Project) => void;
   projectId?: Project['id'];
   relayPiiConfig?: string;
   additionalContext?: React.ReactNode;
@@ -92,14 +93,13 @@ class DataPrivacyRules extends React.Component<Props, State> {
 
   api = new Client();
 
-  loadOrganizationRules = async () => {
-    const {orgSlug} = this.props;
+  loadOrganizationRules = () => {
+    const {organization} = this.props;
     const {isProjectLevel} = this.state;
 
     if (isProjectLevel) {
       try {
-        const rawOrg = await this.api.requestPromise(`/organizations/${orgSlug}/`);
-        const convertedRules = this.convertRelayPiiConfig(rawOrg?.relayPiiConfig);
+        const convertedRules = this.convertRelayPiiConfig(organization.relayPiiConfig);
         this.setState({
           orgRules: convertedRules,
         });
@@ -161,7 +161,7 @@ class DataPrivacyRules extends React.Component<Props, State> {
   };
 
   loadSourceSuggestions = async () => {
-    const {orgSlug, projectId} = this.props;
+    const {organization, projectId} = this.props;
     const {eventId} = this.state;
 
     if (!eventId.value) {
@@ -189,7 +189,7 @@ class DataPrivacyRules extends React.Component<Props, State> {
         query.projectId = projectId;
       }
       const rawSuggestions = await this.api.requestPromise(
-        `/organizations/${orgSlug}/data-scrubbing-selector-suggestions/`,
+        `/organizations/${organization.slug}/data-scrubbing-selector-suggestions/`,
         {query}
       );
       const sourceSuggestions: SourceSuggestions = rawSuggestions.suggestions;
@@ -223,7 +223,7 @@ class DataPrivacyRules extends React.Component<Props, State> {
   };
 
   handleSubmit = async (rules: Array<Rule>) => {
-    const {endpoint} = this.props;
+    const {endpoint, onSubmitSuccess} = this.props;
 
     const errors: Errors = {};
 
@@ -268,10 +268,15 @@ class DataPrivacyRules extends React.Component<Props, State> {
         method: 'PUT',
         data: {relayPiiConfig},
       })
-      .then(() => {
-        this.setState({
-          relayPiiConfig,
-        });
+      .then(result => {
+        this.setState(
+          {
+            relayPiiConfig,
+          },
+          () => {
+            onSubmitSuccess(result);
+          }
+        );
       })
       .then(() => {
         addSuccessMessage(t('Successfully saved data privacy rules'));

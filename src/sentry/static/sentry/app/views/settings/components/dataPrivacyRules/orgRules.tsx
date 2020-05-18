@@ -60,12 +60,11 @@ class OrgRules extends React.Component<Props, State> {
       <ClassNames>
         {({css: classNamesCss}) => (
           <Wrapper isCollapsed={isCollapsed} contentHeight={contentHeight}>
-            <Header>
+            <Header onClick={this.handleToggleCollapsed}>
               <div>{t('Organization Rules')}</div>
               <Button
                 icon={<IconChevron size="xs" direction={isCollapsed ? 'down' : 'up'} />}
                 size="xsmall"
-                onClick={this.handleToggleCollapsed}
                 labelClassName={classNamesCss`
                   padding: ${space(0.25)} ${space(0.5)};
                 `}
@@ -90,6 +89,7 @@ const Content = styled('div')`
 `;
 
 const Header = styled('div')`
+  cursor: pointer;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;

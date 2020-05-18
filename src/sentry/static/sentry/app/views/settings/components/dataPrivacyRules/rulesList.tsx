@@ -30,7 +30,7 @@ const RulesList = React.forwardRef<HTMLUListElement, Props>(function RulesList(
         return (
           <ListItem key={id}>
             <TextOverflow>
-              {`[${methodLabel}] [${typelabel}] ${t('from')} [${source}]`}
+              {`[${methodLabel.label}] [${typelabel}] ${t('from')} [${source}]`}
             </TextOverflow>
             {onShowEditRuleModal && (
               <Button
